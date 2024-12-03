@@ -589,21 +589,28 @@ func LaunchMassDM() {
 					mem <- member
 					time.Sleep(10 * time.Second)
 				} else if respCode == 400 && strings.Contains(string(body), "captcha") {
-					mem <- member
-					utilities.LogFailed("Token %v Captcha was solved incorrectly", instances[i].CensorToken())
-					if instances[i].Config.CaptchaSettings.CaptchaAPI == "anti-captcha.com" {
-						err := instances[i].ReportIncorrectRecaptcha()
-						if err != nil {
-							utilities.LogFailed("Error while reporting incorrect hcaptcha: %v", err)
-						} else {
-							utilities.LogSuccess("Succesfully reported incorrect hcaptcha [%v]", instances[i].LastID)
-						}
-					}
-					instances[i].Retry++
-					if instances[i].Retry >= cfg.CaptchaSettings.MaxCaptchaDM && cfg.CaptchaSettings.MaxCaptchaDM != 0 {
-						utilities.LogFailed("Stopping token %v max captcha solves reached", instances[i].CensorToken())
-						break
-					}
+    mem <- member
+    utilities.LogFailed("Token %v Captcha was solved incorrectly", instances[i].CensorToken())
+    
+    // Check if the current Captcha API is capmonster.cloud
+    if instances[i].Config.CaptchaSettings.CaptchaAPI == "capmonster.cloud" {
+        err := instances[i].ReportIncorrectCaptcha()  // Adjusted for CapMonster
+        if err != nil {
+            utilities.LogFailed("Error while reporting incorrect captcha: %v", err)
+        } else {
+            utilities.LogSuccess("Successfully reported incorrect captcha [%v]", instances[i].LastID)
+        }
+    }
+    
+    instances[i].Retry++
+    
+    // Check if retry limit for DM is reached
+    if instances[i].Retry >= cfg.CaptchaSettings.MaxCaptchaDM && cfg.CaptchaSettings.MaxCaptchaDM != 0 {
+        utilities.LogFailed("Stopping token %v max captcha solves reached", instances[i].CensorToken())
+        break
+    }
+}
+
 				} else {
 					failedCount++
 					if cfg.OtherSettings.Logs {
